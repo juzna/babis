@@ -1,2 +1,5 @@
 output
 .env
+
+# contains passwords
+config.yaml

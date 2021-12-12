@@ -11,7 +11,7 @@
 
 I've tried countless apps for tracking expenses.
 Lots of them were excellent, at some things.
-But, in the end, just good old Sheets satisfied all my requirements:  
+But, in the end, just *Good Old Sheets*™ satisfied all my requirements:  
 
 * Semi-automatic imports from bank accounts
   * Full auto doesn't work for me cause:
@@ -29,9 +29,9 @@ But, in the end, just good old Sheets satisfied all my requirements:
 
 🚨 This is not really meant to be used by others. Maybe just for an inspiration. 
 
-* (put credentials into .env)
-* Adjust `from` date in index.js
-* Run `index.js`
-  * 2FA auth 📱
-* Import `_normalized` files from `/output` into Google Sheets
-* Panic when realizing how much money you spend on coffee 💸
+1. (put credentials into .env)
+1. Adjust `from` date in index.js
+1. Run `index.js`
+   * 2FA auth 📱
+1. Import `_normalized` files from `/output` into Google Sheets
+1. Panic when realizing how much money you spend on coffee 💸
