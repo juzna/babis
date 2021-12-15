@@ -37,6 +37,11 @@ function reload(module) {
   await reload('./scrape/moneta').scrapeCards(page, {from: fromDate})
   await reload('./scrape/moneta').scrapeAccounts(page, {from: fromDate})
   await require('./scrape/moneta').logout(page)
+  
+  // juzna revolut
+  await reload('./scrape/revolut').login(page, config.users.juzna.revolut)
+  await reload('./scrape/revolut').scrapeToJson(page, 'juzna')
+  await reload('./scrape/revolut').logout(page)
 
 
   // ewik airbank
@@ -50,6 +55,9 @@ function reload(module) {
   await require('./scrape/moneta').scrapeAccounts(page, {from: fromDate})
   await require('./scrape/moneta').logout(page)
 
+  // ewik revolut
+  await reload('./scrape/revolut').login(page, config.users.ewik.revolut)
+  await reload('./scrape/revolut').scrapeToJson(page, 'ewik')
 
   // normalize
   await require('./lib/normalize').normalizeAll()
