@@ -27,30 +27,31 @@ function reload(module) {
   
 // delete require.cache[require.resolve('./scrape/airbank')]
 
-// juzna airbank
+  // juzna airbank
   await reload('./scrape/airbank').login(page, config.users.juzna.airbank)
   await reload('./scrape/airbank').scrape(page, {from: fromDate})
   await reload('./scrape/airbank').logout(page)
 
-// juzna moneta
-  await (reload('./scrape/moneta')).login(page, config.users.juzna.moneta)
-  await (reload('./scrape/moneta')).scrapeCards(page, {from: fromDate})
-  await (reload('./scrape/moneta')).scrapeAccounts(page, {from: fromDate})
+  // juzna moneta
+  await reload('./scrape/moneta').login(page, config.users.juzna.moneta)
+  await reload('./scrape/moneta').scrapeCards(page, {from: fromDate})
+  await reload('./scrape/moneta').scrapeAccounts(page, {from: fromDate})
+  await require('./scrape/moneta').logout(page)
 
 
-  await require('./scrape/moneta').logout()
+  // ewik airbank
+  await require('./scrape/airbank').login(page, config.users.ewik.airbank)
+  await require('./scrape/airbank').scrape(page, {from: fromDate})
+  await require('./scrape/airbank').logout(page)
+
+  // ewik moneta
+  await require('./scrape/moneta').login(page, config.users.ewik.moneta)
+  await require('./scrape/moneta').scrapeCards(page, {from: fromDate})
+  await require('./scrape/moneta').scrapeAccounts(page, {from: fromDate})
+  await require('./scrape/moneta').logout(page)
 
 
-// ewik airbank
-  await (require('./scrape/airbank')).login(client, config.users.ewik.airbank)
-  await (require('./scrape/airbank')).scrape(client, {from: fromDate})
-
-// ewik moneta
-  await (require('./scrape/moneta')).login(client, s.config.users.ewik.moneta)
-  await (require('./scrape/moneta')).scrapeCards(client, {from: fromDate})
-  await (require('./scrape/moneta')).scrapeAccounts(client, {from: fromDate})
-
-
+  // normalize
   await require('./lib/normalize').normalizeAll()
 
 })()

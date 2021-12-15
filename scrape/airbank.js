@@ -10,8 +10,13 @@ async function clickOnText(page, elementType, text) {
 }
 
 
-async function waitForSpinnerFinished(page) {
-  await page.waitForSelector(".cmpLoaderOver", {hidden: true})
+/**
+ * @param {puppeteer.Page} page
+ * @param {object} options
+ * @returns {Promise<void>}
+ */
+async function waitForSpinnerFinished(page, options={}) {
+  await page.waitForSelector(".cmpLoaderOver", {hidden: true, ...options})
 }
 
 
@@ -30,7 +35,7 @@ async function login(page, { birthday, user, password}) {
   /* Email */
   await page.type("input[name^=\"authFlow:login\"]", user)
   await page.keyboard.press("Enter")
-  await waitForSpinnerFinished(page)
+  await waitForSpinnerFinished(page, {timeout: 60 * 1000})
 
   /* Date of birth */
   if ( ! await page.$('input[type="password"]')) {  // sometimes it skips this step and goes straight to password
@@ -70,11 +75,12 @@ async function scrape (page, {
   const toParsed = moment(to).format("DD.MM.YYYY")
 
   /* Accounts List */
-  /* === */
-  await page.click('.mhtNavHome a')
-  await page.waitForNetworkIdle()
+  if (await page.$('.mntNavHome:not(.selected)')) {
+    await page.click('.mhtNavHome a')
+    await page.waitForTimeout(1000)
+  }
   await page.click('.mhtNavAccounts a')
-  await page.waitForNetworkIdle()
+  await page.waitForTimeout(1000)
   await waitForSpinnerFinished(page);
 
   const accounts = await page.$$("#jsLayoutAccounts .tab")
