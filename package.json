@@ -15,8 +15,7 @@
     "js-yaml": "~4.1",
     "mkdirp": "~1.0.4",
     "moment": "~2.29",
-    "selenium-standalone": "~7.1",
-    "webdriverio": "~7.7"
+    "puppeteer": "~13.0.0"
   },
   "devDependencies": {
     "eslint": "~7.31",

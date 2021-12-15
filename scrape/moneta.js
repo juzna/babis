@@ -1,131 +1,180 @@
 /* eslint-disable no-await-in-loop, no-console */
 const moment = require("moment");
+const puppeteer = require('puppeteer')
 
-async function login(client, {user, password}) {
-  await client.url("https://ib.moneta.cz/");
+
+async function clickOnText(page, elementType, text) {
+  const [button] = await page.$x(`//${elementType}[contains(., '${text}')]`)
+  await button.click()
+  return button
+}
+
+
+/**
+ * Log in as given user; may need to confirm MFA on the registered phone.
+ * 
+ * @param {puppeteer.Page} page
+ * @param {string} user
+ * @param {string} password
+ * @returns {Promise<void>}
+ */
+async function login(page, {user, password}) {
+  await page.goto("https://ib.moneta.cz/")
+  await page.waitForTimeout(500)
 
   // Username + password
-  await (await client.$("input[name=ibId]")).setValue(user);
-  await (await client.$("input[name=password]")).setValue(password);
-  await client.keys("Enter");
+  await page.type("input[name=ibId]", user)
+  await page.type("input[name=password]", password)
+  await page.keyboard.press("Enter")
 
   // Wait for MFA to finish.
-  await (await client.$('span=Odhlásit')).waitForDisplayed();
+  await page.waitForXPath('//span[contains(., "Odhlásit")]', {timeout:60*1000})
 
   // Close new messages modal dialog.
-  if ( ! (await client.$('button=Zpět na seznam zpráv')).error) {
-    await (await client.$('button[data-testid=close-priority-modal-button]')).click();
+  if ((await page.$x('//button[contains(., "Zpět na seznam zpráv")]')).length) {
+    await page.click('button[data-testid=close-priority-modal-button]')
   }
 
   // Go to old internet banking which supports CSV export
-  await (await client.$('span=Původní Internet Banka')).click();
-  await (await client.$('a=Přesměrovat')).click();
+  await clickOnText(page,'span', 'Původní Internet Banka')
+  await clickOnText(page,'a', 'Přesměrovat')
 }
 
-async function scrapeCards(client, {
+
+/**
+ * Scrape bank statement from cards.
+ *
+ * Assumes `page` is already logged in.
+ *
+ * @param {puppeteer.Page} page
+ * @param {string} from
+ * @param {string} to
+ * @param debugGetOnlyAccounts array of account indices to fetch
+ * @returns {Promise<void>}
+ */
+async function scrapeCards(page, {
   from = moment().subtract(2, "month").format(),
   to = moment().format(),
   debugGetOnlyAccounts /* array of account indices to fetch */,
 }) {
-  const fromParsed = moment(from).format("DD.MM.YYYY");
-  const toParsed = moment(to).format("DD.MM.YYYY");
+  const fromParsed = moment(from).format("DD.MM.YYYY")
+  const toParsed = moment(to).format("DD.MM.YYYY")
 
   // Go to "Cards" section
-  await (await client.$('img[alt=karty]')).click();
-
-  await (await client.$('#cardsList_2_1')).waitForDisplayed();
-  const cards = await client.$$("#cardsList_2_1 tr a");
+  await page.click('img[alt=karty]')
+  await page.waitForSelector('#cardsList_2_1')
   
+  const cards = await page.$$("#cardsList_2_1 tr a")
   for (let i = 0; i < cards.length; i++) {
     // hck: back to karty
     if (i > 0) {
-      // client.pause(3000)
-      await (await client.$('img[alt=karty]')).click();
-      await (await client.$('#cardsList_2_1')).waitForDisplayed();
+      await page.click('img[alt=karty]')
+      await page.waitForSelector('#cardsList_2_1')
     }
 
-    if (debugGetOnlyAccounts && !(i in debugGetOnlyAccounts)) {
-      console.warn(`Skipping account "${accountName}" becacuse in debugGetOnlyAccounts`);
-      continue;
+    let elCard = (await page.$$("#cardsList_2_1 tr a"))[i]
+    let cardNumber = await page.evaluate((el) => el.textContent.trim(), elCard)
+    
+    if (debugGetOnlyAccounts && !debugGetOnlyAccounts.includes(i)) {
+      console.warn(`Skipping account "${cardNumber}" because in debugGetOnlyAccounts`)
+      continue
     }
-
-    // indexed from 2 ¯\_(ツ)_/¯
-    await (await client.$(`#cardsList_2_1 tr:nth-child(${i + 2}) a`)).click();    
-    await (await client.$('span=Číslo karty')).waitForDisplayed();
+    console.log(`Processing card ${cardNumber}`)
+    
+    await page.waitForTimeout(1000)
+    await elCard.click()
+    await page.waitForTimeout(1000)
+    await page.waitForXPath('//span[contains(., "Číslo karty")]')
      
-    const els = await client.$$('#ib-app-card-transactions form input');
-    let el;
+    const els = await page.$$('#ib-app-card-transactions form input')
+    let el
     if (els[6]) { // credit card 
-      await els[5].setValue(fromParsed);
-      await els[6].setValue(toParsed);
+      await els[5].type(fromParsed)
+      await els[6].type(toParsed)
       el = els[6]
     } else {
-      await els[2].setValue(fromParsed);
-      await els[3].setValue(toParsed);
+      await els[2].type(fromParsed)
+      await els[3].type(toParsed)
       el = els[3]
     }
     
     // blur to trigger refresh
-    await client.executeScript('arguments[0].dispatchEvent(new Event("blur"))', [el]);
-    await client.pause(3000);
+    await page.keyboard.press('Tab')
+    await page.waitForTimeout(5 * 1000)
+    // await page.waitForNetworkIdle({idleTime: 1000})
     
-    await client.executeScript('scrollBy(0, 600)');
-    await client.pause(500);
+    await page.evaluate(() => scrollBy(0, 600))
+    await page.waitForTimeout(500)
 
-    await (await client.$('span=Export do Excelu')).click();
-    await client.pause(1000);
-    await (await client.$('span=Stáhnout')).click();
-    await client.pause(1000);
+    await clickOnText(page, 'span', 'Export do Excelu')
+    await page.waitForTimeout(1000)
+    await clickOnText(page, 'span', 'Stáhnout')
+    await page.waitForTimeout(1000)
     
-    await client.pause(10000);
+    await page.waitForTimeout(5 * 1000)
   }
 }
 
-async function scrapeAccounts(client, {
+/**
+ * Scrape bank statement from accounts.
+ *
+ * Assumes `page` is already logged in.
+ *
+ * @param {puppeteer.Page} page
+ * @param {string} from
+ * @param {string} to
+ * @param debugGetOnlyAccounts array of account indices to fetch
+ * @returns {Promise<void>}
+ */
+async function scrapeAccounts(page, {
   from = moment().subtract(2, "month").format(),
   to = moment().format(),
   debugGetOnlyAccounts /* array of account indices to fetch */,
 }) {
-  const fromParsed = moment(from).format("DD.MM.YYYY");
-  const toParsed = moment(to).format("DD.MM.YYYY");
+  const fromParsed = moment(from).format("DD.MM.YYYY")
+  const toParsed = moment(to).format("DD.MM.YYYY")
 
   // Go to "Cards" section
-  await (await client.$('img[alt="Moje účty"]')).click();
-
-  await (await client.$('#balanceList_1_1')).waitForDisplayed();
-  const accounts = await client.$$("#balanceList_1_1 tr .account a");
+  await page.click('img[alt="Moje účty"]')
+  await page.waitForSelector('#balanceList_1_1')
   
+  const accounts = await page.$$("#balanceList_1_1 tr .account a")
   for (let i = 0; i < accounts.length; i++) {
-    // hck: back to karty
+    // hck: back to accounts
     if (i > 0) {
       // client.pause(3000)
-      await (await client.$('img[alt="Moje účty"]')).click();
-      await (await client.$('#balanceList_1_1')).waitForDisplayed();
+      await page.click('img[alt="Moje účty"]')
+      await page.waitForSelector('#balanceList_1_1')
     }
+    
+    let elAccount = (await page.$$("#balanceList_1_1 tr .account a"))[i]
+    let accountNumber = await page.evaluate((el) => el.textContent.trim(), elAccount)
 
-    if (debugGetOnlyAccounts && !(i in debugGetOnlyAccounts)) {
-      console.warn(`Skipping account "${i}" becacuse in debugGetOnlyAccounts`);
-      continue;
+    if (debugGetOnlyAccounts && !debugGetOnlyAccounts.includes(i)) {
+      console.warn(`Skipping account "${accountNumber}" because in debugGetOnlyAccounts`)
+      continue
     }
+    console.log(`Processing account ${accountNumber}`)
 
-    // indexed from 2 ¯\_(ツ)_/¯
-    await (await client.$(`#balanceList_1_1 tr:nth-child(${i + 2}) .account a`)).click();    
-    await (await client.$('img[alt="Přehled transakcí"]')).waitForDisplayed();
+    await page.waitForTimeout(1000)
+    await elAccount.click()
+    await page.waitForTimeout(1000)
+    await page.waitForSelector('img[alt="Přehled transakcí"]')
      
-    const els = await client.$$('#mainFrm input');
-    await els[10].setValue(fromParsed);
-    await els[11].setValue(toParsed);
+    const els = await page.$$('#mainFrm input')
+    await els[10].type(fromParsed)
+    await els[11].type(toParsed)
+    await page.click('img[alt="Zobrazit"]')
     
-    await (await client.$('img[alt=Zobrazit]')).click();
-    await client.pause(3000); // wait for reload
+    await page.waitForTimeout(3000) // wait for reload
     
-    await (await client.$('img[alt="Export do Excelu"]')).click();
-    await client.pause(1000);
+    await page.click('img[alt="Export do Excelu"]')
+    await page.waitForTimeout(1000)
   }
 }
 
-async function logout(client) {
-  await (await client.$('img[alt="Odhlášení"]')).click();
+async function logout(page) {
+  await page.click('img[alt="Odhlášení"]')
 }
 
 
