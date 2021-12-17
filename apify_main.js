@@ -47,9 +47,14 @@ Apify.main(async () => {
 
   console.log('Scraping bank')
   const bankModule = require(`./scrape/${bank}`)
-  await bankModule.login(page, config.users[user][bank])
-  await bankModule.scrape(page, {from})
-  await bankModule.logout(page)
+  try {
+    await bankModule.login(page, config.users[user][bank])
+    await bankModule.scrape(page, {from})
+    await bankModule.logout(page)
+  } catch (e) {
+    await Apify.utils.puppeteer.saveSnapshot(page, {key: 'exception', saveHtml: true})
+    throw e
+  }
   console.log('Scraping finished')
   
   console.log('Normalizing rows and pushing data')

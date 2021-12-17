@@ -21,10 +21,12 @@ async function clickOnText(page, elementType, text) {
  * @returns {Promise<void>}
  */
 async function login(page, {country, phone, pin}) {
+  console.log("Logging in to Revolut")
   await page.goto("https://app.revolut.com/start")
   await page.waitForTimeout(500)
 
-  // Phone number  
+  // Phone number
+  console.log("Entering phone number")
   await page.type('form input', country.substr(0, 6))
   await (await page.$x(`//div[text()="${country}"]`))[0].click()
   await page.type('input[name="phoneNumber"]', phone)
@@ -32,10 +34,13 @@ async function login(page, {country, phone, pin}) {
   await page.waitForTimeout(1000)
 
   // PIN
+  console.log("Entering pin")
   for (const digit of pin.split('')) await page.keyboard.press(digit)
 
   // Wait for MFA to finish
+  console.log("Waiting for MFA")
   await page.waitForXPath('//button[contains(., "Accounts")]', {timeout: 60 * 1000})
+  console.log("... MFA confirmed")
 }
 
 

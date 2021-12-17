@@ -22,16 +22,20 @@ async function clickOnText(page, elementType, text) {
  * @returns {Promise<void>}
  */
 async function login(page, {user, password}) {
+  console.log("Logging in to Moneta")
   await page.goto("https://ib.moneta.cz/")
   await page.waitForTimeout(500)
 
   // Username + password
+  console.log("Entering username & password")
   await page.type("input[name=ibId]", user)
   await page.type("input[name=password]", password)
   await page.keyboard.press("Enter")
 
   // Wait for MFA to finish.
+  console.log("Waiting for MFA")
   await page.waitForXPath('//span[contains(., "Odhlásit")]', {timeout:60*1000})
+  console.log("... MFA confirmed")
 
   // Close new messages modal dialog.
   if ((await page.$x('//button[contains(., "Zpět na seznam zpráv")]')).length) {
@@ -39,8 +43,10 @@ async function login(page, {user, password}) {
   }
 
   // Go to old internet banking which supports CSV export
+  console.log("Redirect to old internet banking")
   await clickOnText(page,'span', 'Původní Internet Banka')
   await clickOnText(page,'a', 'Přesměrovat')
+  console.log("Logged in")
 }
 
 
