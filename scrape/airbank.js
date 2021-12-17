@@ -3,6 +3,9 @@
 /* eslint-disable no-await-in-loop, no-console */
 const moment = require("moment")
 const puppeteer = require("puppeteer")
+const fs = require("fs");
+const parseCsv = require("csv-parse/lib/sync");
+const iconv = require("iconv-lite");
 
 
 /**
@@ -61,8 +64,13 @@ async function login(page, { birthday, user, password}) {
   await page.waitForSelector('input[type="password"]', {timeout: 15000})
   await page.type("input[type=\"password\"]", password)
   await page.keyboard.press("Enter");
+  await page.waitForTimeout(100)
 
-  await page.waitForSelector(".cmpLoaderOver", {visible: false})
+  await waitForSpinnerFinished(page)
+  console.log("spinner finished")
+  
+  await page.waitForSelector('.mhtNavAccounts a')
+  console.log("home found")
 }
 
 /**

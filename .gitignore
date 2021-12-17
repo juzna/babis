@@ -1,5 +1,13 @@
+# global
+node_modules
+.idea
+.DS_Store
+
 output
-.env
 
 # contains passwords
+.env
 config.yaml
+
+# apify
+apify_storage

@@ -6,6 +6,7 @@
   "author": "Strajk <strajk@me.com>",
   "main": "index.js",
   "dependencies": {
+    "apify": "^2.2.0",
     "bluebird": "~3.7",
     "clipboardy": "~2.3",
     "csv-parse": "~4.16",
@@ -15,7 +16,7 @@
     "js-yaml": "~4.1",
     "mkdirp": "~1.0.4",
     "moment": "~2.29",
-    "puppeteer": "~13.0.0"
+    "puppeteer": "^11.0"
   },
   "devDependencies": {
     "eslint": "~7.31",

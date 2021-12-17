@@ -1,0 +1,8 @@
+{
+	"name": "babis",
+	"version": "0.0",
+	"buildTag": "latest",
+	"env": {
+    "CONFIG": "@babis-config"
+  }
+}

@@ -3,7 +3,7 @@ const yaml = require('js-yaml')
 const puppeteer = require('puppeteer')
 const path = require("path")
 
-var fromDate = '2021-10-25';  // <------- SET THIS
+fromDate = '2021-10-25';  // <------- SET THIS
 
 config = yaml.load(fs.readFileSync('config.yaml', 'utf8'));
 
@@ -16,11 +16,10 @@ function reload(module) {
 // reload.require = require
 // require = reload
   
+__dirname = '/Users/juzna/projects/juzna/babis'; // for REPL
   
 
 (async function() {
-  __dirname = '/Users/juzna/projects/juzna/babis' // for REPL
-
   const browser = await puppeteer.launch({
     headless: false,
     args: [`--window-size=1280,600`],
@@ -80,7 +79,7 @@ function reload(module) {
   // normalize - load csv, fix encoding, normalize each row
   //   should return: 'date', 'account', 'payee', 'note', 'category',	'amount', 'currency', 'amount in currency'
   // save new csv / return as json
-  await reload('./lib/normalize').normalizeAllNew(downloadPath, await reload('./scrape/airbank').normalizeFile)
-  await reload('./lib/normalize').normalizeAllNew(downloadPath, await reload('./scrape/moneta').normalizeFile)
-  await reload('./lib/normalize').normalizeAllNew(downloadPath, await reload('./scrape/revolut').normalizeFile)
+  await reload('./lib/normalize').normalizeAllToTsv(downloadPath, await reload('./scrape/airbank').normalizeFile)
+  await reload('./lib/normalize').normalizeAllToTsv(downloadPath, await reload('./scrape/moneta').normalizeFile)
+  await reload('./lib/normalize').normalizeAllToTsv(downloadPath, await reload('./scrape/revolut').normalizeFile)
 })()
