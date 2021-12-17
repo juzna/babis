@@ -1,6 +1,9 @@
 /* eslint-disable no-await-in-loop, no-console */
 const moment = require("moment");
 const puppeteer = require('puppeteer')
+const fs = require("fs");
+const parseCsv = require("csv-parse/lib/sync");
+const iconv = require("iconv-lite");
 
 
 async function clickOnText(page, elementType, text) {
@@ -217,7 +220,7 @@ function normalizePayee(payee) {
   return payee;
 }
 
-function normalize(input) {
+function normalizeCardRow(x) {
   // Example:
   //     'Číslo karty': '525471******5700',
   //     'Uskutečnění': '9.1.2021',
@@ -228,16 +231,16 @@ function normalize(input) {
   //     'Popis transakce': 'CHARGEUP               PRAHA 3 - ZIZ CZE',
   //     'Poznámka': '',
   //     'Kategorie': ''
-  return input.map((x) => ({
+  return {
     date: moment(x['Uskutečnění'], 'DD.MM.YYYY').format('YYYY-MM-DD'),
     account: c2a[x['Číslo karty']],
     payee: normalizePayee(x['Popis transakce']),
     note: x['Poznámka'],
     amount: parseFloat(x['Částka'].replace(',', '.')),
-  })) 
+  }
 }
 
-function normalizeAccounts(input) {
+function normalizeAccountRow(x) {
   // Example:
   //   'Číslo účtu': '231553622/0600',
   //   'IBAN': 'CZ1306000000000231553622',
@@ -262,18 +265,35 @@ function normalizeAccounts(input) {
   //   'Zpráva pro příjemce': '5254 71** **** 6096',
   //   'Poznámka': '',
   //   'Kategorie': ''
-  return input.map((x) => {
-    let payee = x['Název protiúčtu'];
-    if (payeeUnification[payee]) payee = payeeUnification[payee];
-    
-    return {
-      date: moment(x['Odesláno'], 'DD.MM.YYYY').format('YYYY-MM-DD'),
-      account: a2a[x['Číslo účtu']],
-      payee: payee,
-      note: x['Zpráva pro příjemce'],
-      amount: parseFloat(x['Částka'].replace(',', '.'))
-    }
-  }) 
+  let payee = x['Název protiúčtu'];
+  if (payeeUnification[payee]) payee = payeeUnification[payee];
+  
+  return {
+    date: moment(x['Odesláno'], 'DD.MM.YYYY').format('YYYY-MM-DD'),
+    account: a2a[x['Číslo účtu']],
+    payee: payee,
+    note: x['Zpráva pro příjemce'],
+    amount: parseFloat(x['Částka'].replace(',', '.'))
+  }
+}
+
+async function normalizeFile(file) {
+  let opened
+  let parsed
+  
+  // Moneta - credit card
+  if (file.includes("export")) {
+    opened = fs.readFileSync(file, "utf-8")
+    parsed = parseCsv(opened, { columns: true, delimiter: ';', bom: true })
+    return parsed.map((row) => normalizeCardRow(row))
+  }
+
+  // Moneta - account export
+  else if (file.includes("Movements")) {
+    opened = iconv.decode(fs.readFileSync(file), "win1250");
+    parsed = parseCsv(opened, { columns: true, delimiter: ';' })
+    return parsed.map((row) => normalizeAccountRow(row))
+  }
 }
 
 
@@ -282,7 +302,8 @@ module.exports = {
   scrapeAccounts,
   scrapeCards,
   logout,
-  normalize,
-  normalizeAccounts,
   normalizePayee,
+  normalizeAccountRow,
+  normalizeCardRow,
+  normalizeFile,
 };

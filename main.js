@@ -1,6 +1,7 @@
 const fs = require('fs')
 const yaml = require('js-yaml')
 const puppeteer = require('puppeteer')
+const path = require("path")
 
 var fromDate = '2021-10-25';  // <------- SET THIS
 
@@ -12,11 +13,17 @@ function reload(module) {
   if (id in require.cache) delete require.cache[id]
   return require(module)
 }
+// reload.require = require
+// require = reload
+  
+  
 
 (async function() {
+  __dirname = '/Users/juzna/projects/juzna/babis' // for REPL
 
   const browser = await puppeteer.launch({
-    headless: false, args: [`--window-size=1280,600`],
+    headless: false,
+    args: [`--window-size=1280,600`],
     defaultViewport: {
       width: 1280,
       height: 600,
@@ -24,7 +31,15 @@ function reload(module) {
   })
   const page = await browser.newPage()
   
+  // Set download directory; experimental.
+  const downloadPath = path.resolve(__dirname, './output')
+  fs.mkdirSync(downloadPath, {recursive: true})
+  await page._client.send('Page.setDownloadBehavior', {
+    behavior: 'allow', 
+    downloadPath: downloadPath,
+  })
   
+
 // delete require.cache[require.resolve('./scrape/airbank')]
 
   // juzna airbank
@@ -36,11 +51,11 @@ function reload(module) {
   await reload('./scrape/moneta').login(page, config.users.juzna.moneta)
   await reload('./scrape/moneta').scrapeCards(page, {from: fromDate})
   await reload('./scrape/moneta').scrapeAccounts(page, {from: fromDate})
-  await require('./scrape/moneta').logout(page)
+  await reload('./scrape/moneta').logout(page)
   
   // juzna revolut
   await reload('./scrape/revolut').login(page, config.users.juzna.revolut)
-  await reload('./scrape/revolut').scrapeToJson(page, 'juzna')
+  await reload('./scrape/revolut').scrapeToJson(page, 'jz')
   await reload('./scrape/revolut').logout(page)
 
 
@@ -58,8 +73,14 @@ function reload(module) {
   // ewik revolut
   await reload('./scrape/revolut').login(page, config.users.ewik.revolut)
   await reload('./scrape/revolut').scrapeToJson(page, 'ewik')
+  await reload('./scrape/revolut').logout(page)
 
   // normalize
-  await require('./lib/normalize').normalizeAll()
-
+  // find all downloaded files
+  // normalize - load csv, fix encoding, normalize each row
+  //   should return: 'date', 'account', 'payee', 'note', 'category',	'amount', 'currency', 'amount in currency'
+  // save new csv / return as json
+  await reload('./lib/normalize').normalizeAllNew(downloadPath, await reload('./scrape/airbank').normalizeFile)
+  await reload('./lib/normalize').normalizeAllNew(downloadPath, await reload('./scrape/moneta').normalizeFile)
+  await reload('./lib/normalize').normalizeAllNew(downloadPath, await reload('./scrape/revolut').normalizeFile)
 })()

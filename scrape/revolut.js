@@ -70,9 +70,97 @@ async function logout(page) {
   await clickOnText(page, 'a', 'Log out')
 }
 
+
+/**
+ * Example:
+ *   {
+ *     "id": "6184fcc4-19f0-ac8c-a8d0-71a8ea84ad2f",
+ *     "legId": "76150cf2-b9af-423e-8c48-f6d8f6638819",
+ *     "type": "CARD_PAYMENT",
+ *     "state": "COMPLETED",
+ *     "startedDate": 1636105412077,
+ *     "updatedDate": 1636191097738,
+ *     "completedDate": 1636191097734,
+ *     "createdDate": 1636105412412,
+ *     "currency": "CZK",
+ *     "amount": -153969,
+ *     "fee": 0,
+ *     "balance": 55788,
+ *     "description": "Maksutu*reima Europe O",
+ *     "tag": "shopping",
+ *     "category": "shopping",
+ *     "account": {
+ *       "id": "3515db25-d88e-420a-b0bc-2a9a458b1ec2",
+ *       "type": "CURRENT"
+ *     },
+ *     "suggestions": [],
+ *     "countryCode": "FI",
+ *     "rate": 0.0394300391,
+ *     "merchant": {
+ *       "id": "63038723246",
+ *       "merchantId": "0ea7edcc-e49c-431b-bb92-dd2633a8a563",
+ *       "scheme": "MASTERCARD",
+ *       "name": "Maksutu*reima.com",
+ *       "mcc": "5641",
+ *       "category": "shopping",
+ *       "city": "Vantaa",
+ *       "country": "FI",
+ *       "address": "Karhum{entie 3, 01530, Vantaa, FI",
+ *       "state": "FI",
+ *       "postcode": "01530"
+ *     },
+ *     "counterpart": {
+ *       "amount": -6071,
+ *       "currency": "EUR"
+ *     },
+ *     "card": {
+ *       "id": "adfefcba-9b31-411b-8ea2-9e2430b804e9",
+ *       "lastFour": "1739"
+ *     },
+ *     "ratings": {
+ *       "userRating": 0
+ *     },
+ *     "eCommerce": true,
+ *     "localisedDescription": {
+ *       "key": "transaction.description.card.payment.to.merchant",
+ *       "params": [
+ *         {
+ *           "key": "name",
+ *           "value": "Maksutu*reima.com"
+ *         }
+ *       ]
+ *     }
+ *   }
+ * @param {object} t
+ * @param {string} accountPrefix
+ * @returns {*}
+ */
+function normalizeRow(t, accountPrefix = '') {
+  return {
+    date: moment(t.createdDate).format('YYYY-MM-DD'),
+    account: `${accountPrefix} ${t.currency}`.trim(),
+    payee: t.merchant?.name ?? t.description,
+    note: t.comment ?? '',
+    amount: t.amount / 100.0
+  }
+}
+
+async function normalizeFile(file) {
+  var m = file.match(/revolut_(.+)\.json/);
+  if (!m) return // not recognized
+  let accountPrefix = m[1]
+
+  let txs = JSON.parse(fs.readFileSync(file))
+  txs = txs.filter((t) => t.state === 'COMPLETED')
+  
+  return txs.map((row) => normalizeRow(row, accountPrefix))
+}
+
 module.exports = {
   login,
   scrape,
   scrapeToJson,
   logout,
+  normalizeRow,
+  normalizeFile,
 }

@@ -1,9 +1,19 @@
+'use strict';
+
 /* eslint-disable no-await-in-loop, no-console */
 const moment = require("moment")
 const puppeteer = require("puppeteer")
 
 
-async function clickOnText(page, elementType, text) {
+/**
+ * Helper: click on element with given text.
+ * 
+ * @param {puppeteer.Page} page
+ * @param {string} elementType
+ * @param {string} text
+ * @returns {Promise<puppeteer.ElementHandle<Element>>}
+ */
+async function clickOnText(page, elementType, text)  {
   const [button] = await page.$x(`//${elementType}[contains(., '${text}')]`)
   await button.click()
   return button
@@ -12,7 +22,7 @@ async function clickOnText(page, elementType, text) {
 
 /**
  * @param {puppeteer.Page} page
- * @param {object} options
+ * @param {{timeout?: number}} options
  * @returns {Promise<void>}
  */
 async function waitForSpinnerFinished(page, options={}) {
@@ -176,56 +186,70 @@ const c2a = {
   '1774384022': 'Air Bank jz spořicí účet 1',
 }
 
-function normalize (input, filename) {
-  let m = /airbank_(\d+)_[\d_-]+\.csv/.exec(filename)
+/**
+ * 
+ * @param {any} x
+ * @param {string} accountName
+ * @returns {NormalizedRow}
+ */
+function normalizeRow(x, accountName) {
+  let desc = []
+  
+  let payee = knowAccountNumbers[x["Číslo účtu protistrany"]] || x["Název protistrany"];
+  
+  if (
+    x["Typ úhrady"] !== "Platba kartou" &&
+    x["Typ úhrady"] !== "Karetní transakce (nezaúčtováno)" &&
+    x["Typ úhrady"] !== "Trvalý příkaz" &&
+    x["Typ úhrady"] !== "Odchozí úhrada"
+  ) {
+    desc.push(x["Typ úhrady"])
+  }
+
+  if (x["Poznámka pro mne"]) {
+    desc.push(x["Poznámka pro mne"])
+  }
+
+  if (x["Zpráva pro příjemce"] && !desc.includes(x["Zpráva pro příjemce"])) {
+    desc.push(x["Zpráva pro příjemce"])
+  }
+  
+  if (x["Pojmenování příkazu"] && !desc.includes(x["Pojmenování příkazu"])) {
+    desc.push(x["Pojmenování příkazu"])
+  }
+
+  if (x["Původní měna úhrady"] !== "CZK") {
+    desc.push(`(${-parseFloat(x["Původní částka úhrady"])} ${x["Původní měna úhrady"]})`)
+  }
+
+  return {
+    date: moment(x["Datum provedení"], "DD/MM/YYYY").format("YYYY-MM-DD"),
+    account: accountName,
+    payee: payee,
+    note: desc.join(' | '),
+    amount: parseFloat(x["Částka v měně účtu"].replace(',', '.')),
+    currency: x["Původní měna úhrady"] !== "CZK" && x["Původní měna úhrady"], 
+    'amount in currency': x["Původní měna úhrady"] !== "CZK" && x["Původní částka úhrady"], 
+  }
+}
+
+async function normalizeFile(path) {
+  if (!path.includes("airbank")) return  // not our file ¯\_(ツ)_/¯
+  
+  let opened = fs.readFileSync(path, "utf-8")
+  let parsed = parseCsv(opened, { columns: true, delimiter: ',' })
+  
+  let m = /airbank_(\d+)_[\d_-]+\.csv/.exec(path)
   let accountNumber = m && m[1]
   let accountName = accountNumber ? c2a[accountNumber] : undefined
-  
-  return input.map((x) => {
-    let desc = []
-    
-    let payee = knowAccountNumbers[x["Číslo účtu protistrany"]] || x["Název protistrany"];
-    
-    if (
-      x["Typ úhrady"] !== "Platba kartou" &&
-      x["Typ úhrady"] !== "Karetní transakce (nezaúčtováno)" &&
-      x["Typ úhrady"] !== "Trvalý příkaz" &&
-      x["Typ úhrady"] !== "Odchozí úhrada"
-  ) {
-      desc.push(x["Typ úhrady"])
-    }
 
-    if (x["Poznámka pro mne"]) {
-      desc.push(x["Poznámka pro mne"])
-    }
-
-    if (x["Zpráva pro příjemce"] && !desc.includes(x["Zpráva pro příjemce"])) {
-      desc.push(x["Zpráva pro příjemce"])
-    }
-    
-    if (x["Pojmenování příkazu"] && !desc.includes(x["Pojmenování příkazu"])) {
-      desc.push(x["Pojmenování příkazu"])
-    }
-
-    if (x["Původní měna úhrady"] !== "CZK") {
-      desc.push(`(${-parseFloat(x["Původní částka úhrady"])} ${x["Původní měna úhrady"]})`)
-    }
-
-    return {
-      date: moment(x["Datum provedení"], "DD/MM/YYYY").format("YYYY-MM-DD"),
-      account: accountName,
-      payee: payee,
-      note: desc.join(' | '),
-      amount: parseFloat(x["Částka v měně účtu"].replace(',', '.')),
-      currency: x["Původní měna úhrady"] !== "CZK" && x["Původní měna úhrady"], 
-      'amount in currency': x["Původní měna úhrady"] !== "CZK" && x["Původní částka úhrady"], 
-    }
-  })
+  return parsed.map((row) => normalizeRow(row, accountName))
 }
 
 module.exports = {
   login,
   logout,
   scrape,
-  normalize,
+  normalizeRow,
+  normalizeFile,
 }
