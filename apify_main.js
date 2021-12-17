@@ -16,6 +16,7 @@ Apify.main(async () => {
   const config = yaml.load(process.env.CONFIG ?? fs.readFileSync('config.yaml', 'utf8'))
 
   // Check config vs input.
+  if (!from || !user || !bank) throw new Error('Input is missing some required params')
   if (!config.users[user]) throw new Error('Unknown user, not in config')
   if (!config.users[user][bank]) throw new Error('Unknown bank, not in config for user')
   
@@ -41,7 +42,7 @@ Apify.main(async () => {
   const downloadPath = path.resolve(__dirname, './output')
   fs.mkdirSync(downloadPath, {recursive: true})
   await page._client.send('Page.setDownloadBehavior', {
-    behavior: 'allow',
+    behavior: 'default',
     downloadPath: downloadPath,
   })  
 
@@ -52,6 +53,7 @@ Apify.main(async () => {
     await bankModule.scrape(page, {from})
     await bankModule.logout(page)
   } catch (e) {
+    console.error(e)
     await Apify.utils.puppeteer.saveSnapshot(page, {key: 'exception', saveHtml: true})
     throw e
   }

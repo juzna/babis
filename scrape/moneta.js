@@ -4,6 +4,7 @@ const puppeteer = require('puppeteer')
 const fs = require("fs");
 const parseCsv = require("csv-parse/lib/sync");
 const iconv = require("iconv-lite");
+const {raceWithIndex} = require("../lib/helpers");
 
 
 async function clickOnText(page, elementType, text) {
@@ -24,14 +25,21 @@ async function clickOnText(page, elementType, text) {
 async function login(page, {user, password}) {
   console.log("Logging in to Moneta")
   await page.goto("https://ib.moneta.cz/")
-  await page.waitForTimeout(500)
+  await page.waitForTimeout(2000)
 
   // Username + password
   console.log("Entering username & password")
-  await page.type("input[name=ibId]", user)
-  await page.type("input[name=password]", password)
-  await page.keyboard.press("Enter")
+  await page.type("input[name=ibId]", user, {delay: 100})
+  await page.type("input[name=password]", password, {delay: 100})
+  await page.keyboard.press("Enter", {delay: 100})
 
+  // Check for error of MFA request.
+  let [i, el] = await raceWithIndex([
+    page.waitForXPath('//div[contains(., "Některý ze zadaných údajů nebyl správný")]'),
+    page.waitForXPath('//div[contains(., "Potvrďte oznámení v aplikaci Smart Banka")]'),
+  ])
+  if (i === 0) throw new Error('Credentials are not valid')
+  
   // Wait for MFA to finish.
   console.log("Waiting for MFA")
   await page.waitForXPath('//span[contains(., "Odhlásit")]', {timeout:60*1000})
@@ -41,11 +49,13 @@ async function login(page, {user, password}) {
   if ((await page.$x('//button[contains(., "Zpět na seznam zpráv")]')).length) {
     await page.click('button[data-testid=close-priority-modal-button]')
   }
-
+  
   // Go to old internet banking which supports CSV export
   console.log("Redirect to old internet banking")
   await clickOnText(page,'span', 'Původní Internet Banka')
   await clickOnText(page,'a', 'Přesměrovat')
+  await page.waitForSelector('img[alt=karty]')
+  await page.waitForTimeout(500)
   console.log("Logged in")
 }
 
@@ -182,6 +192,11 @@ async function scrapeAccounts(page, {
   }
 }
 
+async function scrape(page, {from}) {
+  await scrapeAccounts(page, {from})
+  await scrapeCards(page, {from})
+}
+
 async function logout(page) {
   await page.click('img[alt="Odhlášení"]')
 }
@@ -305,6 +320,7 @@ async function normalizeFile(file) {
 
 module.exports = {
   login,
+  scrape,
   scrapeAccounts,
   scrapeCards,
   logout,

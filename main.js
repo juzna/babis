@@ -48,8 +48,9 @@ __dirname = '/Users/juzna/projects/juzna/babis'; // for REPL
 
   // juzna moneta
   await reload('./scrape/moneta').login(page, config.users.juzna.moneta)
-  await reload('./scrape/moneta').scrapeCards(page, {from: fromDate})
-  await reload('./scrape/moneta').scrapeAccounts(page, {from: fromDate})
+  await reload('./scrape/moneta').scrape(page, {from: fromDate})
+  // await reload('./scrape/moneta').scrapeCards(page, {from: fromDate})
+  // await reload('./scrape/moneta').scrapeAccounts(page, {from: fromDate})
   await reload('./scrape/moneta').logout(page)
   
   // juzna revolut
