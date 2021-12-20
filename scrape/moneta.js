@@ -5,10 +5,11 @@ const fs = require("fs");
 const parseCsv = require("csv-parse/lib/sync");
 const iconv = require("iconv-lite");
 const {raceWithIndex} = require("../lib/helpers");
+const Apify = require("apify");
 
 
 async function clickOnText(page, elementType, text) {
-  const [button] = await page.$x(`//${elementType}[contains(., '${text}')]`)
+  const [button] = await page.waitForXPath(`//${elementType}[contains(., '${text}')]`, {timeout: 3000})
   await button.click()
   return button
 }
@@ -30,7 +31,8 @@ async function login(page, {user, password}) {
   // Username + password
   console.log("Entering username & password")
   await page.type("input[name=ibId]", user, {delay: 100})
-  await page.type("input[name=password]", password, {delay: 100})
+  await page.type("input[name=password]", password, {delay: 200})
+  // await Apify.utils.puppeteer.saveSnapshot(page, {key: 'moneta-login', saveHtml: true})
   await page.keyboard.press("Enter", {delay: 100})
 
   // Check for error of MFA request.
