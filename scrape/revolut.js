@@ -76,6 +76,22 @@ async function logout(page) {
 }
 
 
+// From `/wallet` endpoint.
+const accountNames = {
+  "8366f141-250b-46f9-967c-3b62430f18c7": "Revolut jz CZK",
+  "c7495d4d-1811-44b3-b0e0-354d596ae177": "Revolut jz EUR",
+  "6a21e583-1d85-426e-b613-fd5f7fa76a29": "Revolut jz GBP",
+  "50474439-23cb-48c1-ae3a-e43e14fdc4ab": "Revolut jz USD",
+}
+
+// FIXME: Some better way to do this.
+const ratesToCzk = {
+  'USD': 22.40,
+  'GBP': 29.71,
+  'EUR': 25.35,
+}
+
+
 /**
  * Example:
  *   {
@@ -143,23 +159,26 @@ async function logout(page) {
 function normalizeRow(t, accountPrefix = '') {
   return {
     date: moment(t.createdDate).format('YYYY-MM-DD'),
-    account: `${accountPrefix} ${t.currency}`.trim(),
-    payee: t.merchant?.name ?? t.description,
-    note: t.comment ?? '',
-    amount: t.amount / 100.0
+    account: accountNames[t.account.id] ?? `${accountPrefix} ${t.currency}`.trim(),
+    payee: t.counterpart?.account ? accountNames[t.counterpart.account.id] : (t.merchant?.name ?? t.description),
+    note: t.counterpart?.account ? t.description : (t.comment ?? ''),
+    amount: (t.amount / 100.0 * (t.currency === 'CZK' ? 1.0 : ratesToCzk[t.currency])).toFixed(2),
+    currency: t.currency === 'CZK' ? null : t.currency,
+    "amount in currency": t.currency === 'CZK' ? null : t.amount / 100.0,
   }
 }
 
 async function normalizeFile(file) {
-  var m = file.match(/revolut_(.+)\.json/);
+  let m = file.match(/revolut_(.+)\.json/);
   if (!m) return // not recognized
   let accountPrefix = m[1]
 
   let txs = JSON.parse(fs.readFileSync(file))
   txs = txs.filter((t) => t.state === 'COMPLETED')
   
-  return txs.map((row) => normalizeRow(row, accountPrefix))
+  return txs.map((row) => normalizeRow(row, `Revolut ${accountPrefix}`))
 }
+
 
 module.exports = {
   login,
