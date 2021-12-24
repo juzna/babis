@@ -50,7 +50,7 @@ Apify.main(async () => {
   const bankModule = require(`./scrape/${bank}`)
   try {
     await bankModule.login(page, config.users[user][bank])
-    await bankModule.scrape(page, {from})
+    await bankModule.scrape(page, {user, from})
     await bankModule.logout(page)
   } catch (e) {
     console.error(e)

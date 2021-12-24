@@ -55,7 +55,7 @@ __dirname = '/Users/juzna/projects/juzna/babis'; // for REPL
   
   // juzna revolut
   await reload('./scrape/revolut').login(page, config.users.juzna.revolut)
-  await reload('./scrape/revolut').scrapeToJson(page, 'jz')
+  await reload('./scrape/revolut').scrape(page, {user: 'jz'})
   await reload('./scrape/revolut').logout(page)
 
 
@@ -72,7 +72,7 @@ __dirname = '/Users/juzna/projects/juzna/babis'; // for REPL
 
   // ewik revolut
   await reload('./scrape/revolut').login(page, config.users.ewik.revolut)
-  await reload('./scrape/revolut').scrapeToJson(page, 'ewik')
+  await reload('./scrape/revolut').scrape(page, {user:'ewik'})
   await reload('./scrape/revolut').logout(page)
 
   // normalize

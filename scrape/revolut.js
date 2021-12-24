@@ -5,7 +5,7 @@ const fs = require("fs");
 
 
 async function clickOnText(page, elementType, text) {
-  const [button] = await page.$x(`//${elementType}[contains(., '${text}')]`)
+  const [button] = await page.waitForXPath(`//${elementType}[contains(., '${text}')]`)
   await button.click()
   return button
 }
@@ -41,6 +41,8 @@ async function login(page, {country, phone, pin}) {
   console.log("Waiting for MFA")
   await page.waitForXPath('//button[contains(., "Accounts")]', {timeout: 60 * 1000})
   console.log("... MFA confirmed")
+  
+  await page.waitForTimeout(500) // ¯\_(ツ)_/¯
 }
 
 
@@ -50,7 +52,7 @@ async function login(page, {country, phone, pin}) {
  * @param {puppeteer.Page} page
  * @returns {Promise<*>} Returns JSON of all payments.
  */
-async function scrape(page) {
+async function scrapeAndReturn(page) {
   // Open all accounts and catch an XHR request.
   let resp = (await Promise.all([
     page.goto('https://app.revolut.com/home/accounts?accountId=all_accounts'),
@@ -61,9 +63,16 @@ async function scrape(page) {
 
 
 async function scrapeToJson(page, file_suffix) {
-  let j = await scrape(page)
+  let j = await scrapeAndReturn(page)
   fs.writeFileSync(`./output/revolut_${file_suffix}.json`, JSON.stringify(j, null, 2))
 }
+
+async function scrape(page, {from, user}) {
+  console.log("Scraping Revolut")
+  await scrapeToJson(page, user)
+  console.log("... DONE")
+}
+
 
 /**
  * @param {puppeteer.Page} page
@@ -183,6 +192,7 @@ async function normalizeFile(file) {
 module.exports = {
   login,
   scrape,
+  scrapeAndReturn,
   scrapeToJson,
   logout,
   normalizeRow,
