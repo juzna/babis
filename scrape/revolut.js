@@ -5,7 +5,7 @@ const fs = require("fs");
 
 
 async function clickOnText(page, elementType, text) {
-  const [button] = await page.waitForXPath(`//${elementType}[contains(., '${text}')]`)
+  const button = await page.waitForXPath(`//${elementType}[contains(., '${text}')]`)
   await button.click()
   return button
 }

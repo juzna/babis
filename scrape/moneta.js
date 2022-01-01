@@ -9,7 +9,7 @@ const Apify = require("apify");
 
 
 async function clickOnText(page, elementType, text) {
-  const [button] = await page.waitForXPath(`//${elementType}[contains(., '${text}')]`, {timeout: 3000})
+  const button = await page.waitForXPath(`//${elementType}[contains(., '${text}')]`, {timeout: 3000})
   await button.click()
   return button
 }
@@ -27,6 +27,14 @@ async function login(page, {user, password}) {
   console.log("Logging in to Moneta")
   await page.goto("https://ib.moneta.cz/")
   await page.waitForTimeout(2000)
+
+  // Accept cookies
+  try {
+    await clickOnText(page, 'button', 'Povolit vše')
+    console.log('Cookies accepted')
+  } catch (e) {
+    console.log('Cookies popup not shown')
+  }
 
   // Username + password
   console.log("Entering username & password")
@@ -59,6 +67,14 @@ async function login(page, {user, password}) {
   await page.waitForSelector('img[alt=karty]')
   await page.waitForTimeout(500)
   console.log("Logged in")
+  
+  // Accept cookies
+  try {
+    await clickOnText(page, 'button', 'Povolit vše')
+    console.log('Cookies accepted')
+  } catch (e) {
+    console.log('Cookies popup not shown')
+  }
 }
 
 
